@@ -3,6 +3,7 @@ use starknet::{ContractAddress};
 #[starknet::interface]
 pub trait IMintable<TContractState> {
     fn mint(ref self: TContractState, tx_hash: ByteArray, chain_id : felt252, user_address: ContractAddress);
+    fn get_latest_token_id(self : @TContractState) -> u128;
 }
 
 #[starknet::contract]
@@ -40,7 +41,7 @@ mod nft {
         // keeps track of the last minted token ID
         latest_token_id: u128,
 
-        txhash_useraddress: Map<ContractAddress,felt252>
+        txhash_used : Map<felt252,bool>,
     }
 
     #[event]
@@ -55,10 +56,10 @@ mod nft {
 
     #[derive(Drop, starknet::Event)]
     struct MintEvent {
-      
+            token_id: u128,
+            caller_address: ContractAddress,
             tx_hash: ByteArray,
             chain_id: felt252,
-            user_address: ContractAddress
         }
     #[constructor]
     fn constructor(ref self: ContractState) {
@@ -96,23 +97,24 @@ mod nft {
     #[abi(embed_v0)]
     impl IMintableImpl of super::IMintable<ContractState> {
         fn mint(ref self: ContractState, tx_hash: ByteArray, chain_id : felt252, user_address: ContractAddress) {
+            
+            let is_used = self.txhash_used.read(tx_hash.hash());
+            assert(!is_used, 'Transaction already used');
+            self.txhash_used.write(tx_hash.hash(), true);
 
-            let recorded_txhash = self.txhash_useraddress.read(user_address);
-            let pedersen_hash = tx_hash.hash();
-            assert(recorded_txhash == pedersen_hash, 'Transaction already recorded');
-
-     
             let token_id = self.latest_token_id.read() + 1;
             self.latest_token_id.write(token_id);
         
-            let minter = get_caller_address();
-            
-            self.txhash_useraddress.write(user_address, pedersen_hash);
+            let caller_address = get_caller_address();
         
-            self.erc721.mint(minter, token_id.into());
-            self.emit(MintEvent { tx_hash, chain_id, user_address });
+            self.erc721.mint(caller_address, token_id.into());
+            self.emit(MintEvent { token_id, caller_address,tx_hash, chain_id });
         
         
+        }
+
+        fn get_latest_token_id(self : @ContractState) -> u128 {
+            self.latest_token_id.read()
         }
     }
 

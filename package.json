@@ -1,0 +1,16 @@
+{
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "fs": "^0.0.1-security",
+    "starknet": "^6.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.1"
+  },
+  "scripts": {
+    "deploy": "NODE_OPTIONS='--loader ts-node/esm' ts-node scripts/deploy.ts"
+  }
+}
